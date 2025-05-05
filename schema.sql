@@ -50,6 +50,18 @@ CREATE TABLE IF NOT EXISTS files (
     UNIQUE(name, parent_id)
 );
 
+-- Add variables table for userland state
+CREATE TABLE IF NOT EXISTS variables (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, name)
+);
+
 -- Views for program execution
 CREATE VIEW program_execution AS
 SELECT 
@@ -188,4 +200,45 @@ VALUES
     ) as output
     FROM processes
     ORDER BY id DESC
-    LIMIT 10"); 
+    LIMIT 10"),
+    
+    ('set', 'Set a variable',
+    "SELECT
+        CASE
+            WHEN ? = '' THEN 'Usage: set <name> <value>'
+            WHEN instr(?, ' ') = 0 THEN 'Usage: set <name> <value>'
+            ELSE (
+                SELECT 'Set variable: ' || substr(?, 1, instr(?, ' ')-1)
+                WHERE EXISTS (
+                    SELECT 1 FROM users WHERE id = 1
+                )
+            )
+        END as output
+    "),
+    
+    ('get', 'Get a variable value',
+    "SELECT
+        CASE
+            WHEN ? = '' THEN 'Usage: get <name>'
+            WHEN EXISTS (
+                SELECT 1 FROM variables 
+                WHERE user_id = 1 AND name = ?
+            ) THEN (
+                SELECT value FROM variables 
+                WHERE user_id = 1 AND name = ?
+            )
+            ELSE 'Variable not found: ' || ?
+        END as output
+    "),
+    
+    ('vars', 'List all variables',
+    "SELECT coalesce(
+        group_concat(
+            name || ' = ' || value,
+            char(10)
+        ),
+        'No variables set'
+    ) as output
+    FROM variables
+    WHERE user_id = 1
+    ORDER BY name"); 

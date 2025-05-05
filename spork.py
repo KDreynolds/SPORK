@@ -80,6 +80,15 @@ class SPORK:
                            VALUES (?, 1, 1, ?, 0)""",
                         (filename, content)
                     )
+            elif program_name == "set":
+                if " " in args:
+                    name, value = args.split(" ", 1)
+                    self.conn.execute(
+                        """INSERT OR REPLACE INTO variables 
+                           (user_id, name, value, updated_at) 
+                           VALUES (1, ?, ?, CURRENT_TIMESTAMP)""",
+                        (name, value)
+                    )
             
             # Update process status
             self.conn.execute(
